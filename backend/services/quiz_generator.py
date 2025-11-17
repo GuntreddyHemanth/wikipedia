@@ -11,7 +11,7 @@ def generate_quiz(article_content: str, article_title: str) -> Dict[str, Any]:
     """Generate quiz questions using Gemini API"""
     try:
         llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash",
             google_api_key=settings.GOOGLE_API_KEY,
             temperature=0.7
         )

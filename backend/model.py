@@ -18,7 +18,7 @@ class Article(Base):
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    quizzes = relationship("Quiz", back_populates="articles", cascade="all, delete-orphan")
+    quizzes = relationship("Quiz", back_populates="article", cascade="all, delete-orphan")
 
 
 class Quiz(Base):

@@ -1,26 +1,27 @@
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
-import re
 
 class WikipediaScraperError(Exception):
+    """Custom exception for Wikipedia scraping errors."""
     pass
 
 def validate_wikipedia_url(url: str) -> bool:
-    """Validate that the URL is a Wikipedia article URL"""
+    """Validate that the URL is a Wikipedia article URL."""
     try:
         parsed = urlparse(url)
-        return "wikipedia.org" in parsed.netloc and "/wiki/" in parsed.path
-    except:
+        return ('wikipedia.org' in parsed.netloc and parsed.path.startswith('/wiki/'))
+    except Exception:
         return False
 
 def extract_article_content(url: str) -> dict:
+    """Fetch and extract the main content of a Wikipedia article."""
     if not validate_wikipedia_url(url):
-        raise WikipediaScraperError("Invalid Wikipedia URL provided")
+        raise WikipediaScraperError("Invalid Wikipedia URL provided.")
 
     try:
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
         }
         response = requests.get(url, headers=headers, timeout=20)
         response.raise_for_status()
@@ -29,30 +30,29 @@ def extract_article_content(url: str) -> dict:
 
         # Extract title
         title_tag = soup.find("h1", id="firstHeading")
-        title = title_tag.text if title_tag else "Unknown Title"
+        title = title_tag.text.strip() if title_tag else "Unknown Title"
 
-        # Extract content
-        content_div = soup.find("div", class_="mw-parser-output")
+        # Extract main content
+        content_div = soup.find("div", class_="mw-content-ltr mw-parser-output")
         if not content_div:
-            raise WikipediaScraperError("Could not find article content")
+            raise WikipediaScraperError("Could not find article content.")
 
         # Remove unwanted tags
-        for tag in content_div(["script", "style", "sup", "table"]):
+        for tag in content_div.find_all(["script", "style", "sup", "table", "img"]):
             tag.decompose()
 
-        # Extract only real text paragraphs
+        # Extract text from paragraphs
         paragraphs = []
-        for element in content_div.find_all(["p", "li"]):
+        for element in content_div.find_all("p", recursive=False):
             text = element.get_text(strip=True)
-            if len(text) < 10:
-                continue
-            paragraphs.append(text)
+            if len(text) >= 30:  # Require longer content to avoid stub articles
+                paragraphs.append(text)
 
         if len(paragraphs) < 1:
-            raise WikipediaScraperError("Not enough article content found")
+            raise WikipediaScraperError("Not enough article content found.")
 
+        # Join and truncate to avoid very long output
         content = "\n\n".join(paragraphs)[:4000]
-
 
         return {
             "title": title,
@@ -62,6 +62,5 @@ def extract_article_content(url: str) -> dict:
 
     except requests.RequestException as e:
         raise WikipediaScraperError(f"Failed to fetch Wikipedia page: {str(e)}")
-
     except Exception as e:
         raise WikipediaScraperError(f"Error processing Wikipedia page: {str(e)}")
